@@ -19,14 +19,16 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onDistanceChange }) => {
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm"
         );
-        
+
+        // Use CPU delegate for better compatibility on mobile browsers (Edge, some WebViews)
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-            delegate: "GPU"
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+            delegate: "CPU",
           },
           runningMode: "VIDEO",
-          numHands: 2
+          numHands: 2,
         });
 
         startWebcam(handLandmarker);
@@ -41,21 +43,33 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onDistanceChange }) => {
       if (!videoRef.current) return;
 
       try {
+        // Use more conservative constraints for better mobile compatibility
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent
+        );
+
+        const videoConstraints: MediaStreamConstraints["video"] = isMobile
+          ? {
+              facingMode: "user",
+            }
+          : {
+              width: { ideal: 640 },
+              height: { ideal: 480 },
+              facingMode: "user",
+              frameRate: { ideal: 30, max: 60 },
+            };
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { 
-            width: 640, 
-            height: 480, 
-            facingMode: 'user',
-            frameRate: { ideal: 30, max: 60 } // 提高帧率
-          }
+          video: videoConstraints,
         });
         videoRef.current.srcObject = stream;
-        videoRef.current.addEventListener('loadeddata', () => {
+        videoRef.current.addEventListener("loadeddata", () => {
           setLoading(false);
           predictWebcam(landmarker);
         });
       } catch (err) {
-        setError("Camera access denied.");
+        console.error("getUserMedia error", err);
+        setError("Camera access denied or unsupported.");
         setLoading(false);
       }
     };
