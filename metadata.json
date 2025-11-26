@@ -1,0 +1,7 @@
+{
+  "name": "Zen Particles 3D",
+  "description": "A real-time interactive 3D particle system controlled by hand gestures. Use your hands to expand and contract the universe.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
